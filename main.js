@@ -27,9 +27,11 @@ function writeFile(fileName, data){
 
 
 function process() {
+//    var summary = logAnalyzer.getActionSummary();
+//    console.log('Writing summary');
+//    writeFile('actions summary.csv', getCsv(summary));
 
-    var summary = logAnalyzer.getActionSummary();
-    writeFile('actions summary.csv', getCsv(summary));
+    logAnalyzer.getBookmarkSummary();
 
 }
 

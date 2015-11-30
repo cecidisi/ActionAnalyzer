@@ -1,6 +1,7 @@
 var LogAnalyzer = (function(){
 
     var _ = require('underscore');
+    var jQuery = require('jquery');
 
     if(!Math.roundTo)
         Math.roundTo = function(value, places) { return +(Math.round(value + "e+" + places)  + "e-" + places); }
@@ -37,7 +38,7 @@ var LogAnalyzer = (function(){
         arr.forEach(function(a){
             sum += Math.pow((a - mean), 2);
         });
-        return Math.sqrt(sum / arr.length);
+        return Math.sqrt(sum / (arr.length - 1));
     }
 
     LogAnalyzer.prototype = {
@@ -86,69 +87,91 @@ var LogAnalyzer = (function(){
             return userActionsArray;
         },
 
+        getBookmarkSummary: function(){
+            _this.bookmarkSummary = [];
+            var initObj = { user: '', totalBookmarks: 0, avgKeywordsPerBM: 0, totalUniqueKeywords: 0 };
+            var stats = {
+                total: 0,
+                mean: 0,
+                std: 0,
+                userWithBookmarks: 0,
+                meanWithoutOutliers: 0,
+                stdWithoutOutliers: 0,
+                avgKeywordsPerBM: 0,
+                stdKeywordsPerBM: 0,
+                avgUniqueKeywords: 0,
+                stdUniqueKeywords: 0,
+            };
 
+//            var stats = { bookmarks: { total: 0, mean: 0, std: 0, meanWithoutOutliers: 0, stdWithoutOutliers: 0 }, keywordsPerBookmark: { total: 0, mean: 0, std: 0 } };
 
-        getActionCount: function(){
+            _this.logFiles.forEach(function(logFile, i){
+                var obj =  _.extend({}, initObj, { user: logFile.file });
+                var uniqueKwUsed = [];
+                var firstBookmarkFlag = false;
 
-            var logFiles = [];
-            for(var i=1; i<=16; ++i)
-                logFiles.push('test-'+i+'.json');
+//                console.log('********* USER : ' + logFile.file);
+                logFile.data.forEach(function(log) {
+                    if(log.action === _this.action.documentBookmarked) {
+                        obj.totalBookmarks++;
+                        obj.avgKeywordsPerBM += log.info.keywords.length;
 
+                        var newUniqueKw = _.difference(log.info.keywords.map(function(k){ return k.term }), uniqueKwUsed);
+                        uniqueKwUsed = uniqueKwUsed.concat(newUniqueKw);
+                    }
+                });
+                obj.avgKeywordsPerBM = (obj.avgKeywordsPerBM / obj.totalBookmarks) || 0;
+                obj.totalUniqueKeywords += uniqueKwUsed.length;
+                _this.bookmarkSummary.push(obj);
 
-            var actionCount = {}, actionsByUser = [], logStats = {}, logStatsArray = [], loadedFiles = 0;
-            Object.keys(_this.action).forEach(function(action){
-                var a = _this.action[action];
-                actionCount[a] = Array.apply(null, Array(logFiles.length)).map(Number.prototype.valueOf,0);;
+                stats.total += obj.totalBookmarks;
+                stats.userWithBookmarks = obj.totalBookmarks > 0 ? stats.userWithBookmarks + 1 : stats.userWithBookmarks;
+                stats.avgKeywordsPerBM += obj.avgKeywordsPerBM;
+                stats.avgUniqueKeywords += obj.totalUniqueKeywords;
             });
-            logFiles.forEach(function(file, i){
-                actionsByUser.push({ user: (i+1), file: file});
-            });
 
-            $.when(
-                logFiles.forEach(function(file, i){
-                    $.getJSON('./logs/' + file, function(logs){
-                        logs.forEach(function(log, j){
-                            actionCount[log.action][i]++;
-                        });
+            stats.mean = Math.roundTo(stats.total / _this.logFiles.length, 2);
+            stats.std = Math.round(getStdv(_this.bookmarkSummary.map(function(d){ return d.totalBookmarks }), stats.mean), 2);
+            stats.meanWithoutOutliers = Math.roundTo(stats.total / stats.userWithBookmarks, 2);
+            stats.stdWithoutOutliers = Math.roundTo(getStdv(_this.bookmarkSummary.map(function(d){ return d.totalBookmarks }).filter(function(n){ return n > 0 }), stats.meanWithoutOutliers), 2);
+            stats.avgKeywordsPerBM = Math.roundTo(stats.avgKeywordsPerBM / stats.userWithBookmarks, 2);
+            stats.stdKeywordsPerBM = Math.roundTo(getStdv(_this.bookmarkSummary.map(function(d){ return d.avgKeywordsPerBM }).filter(function(n){ return n > 0 }), stats.avgKeywordsPerBM), 2);
+            stats.avgUniqueKeywords = Math.roundTo(stats.avgUniqueKeywords / stats.userWithBookmarks, 2);
+            stats.stdUniqueKeywords = Math.roundTo(getStdv(_this.bookmarkSummary.map(function(d){ return d.totalUniqueKeywords }).filter(function(n){ return n > 0 }), stats.avgUniqueKeywords), 2);
+//            console.log(_this.bookmarkSummary);
+            console.log(stats);
+            return _this.bookmarkSummary;
 
-                        loadedFiles++;
-
-                        if(loadedFiles === logFiles.length) {
-                            Object.keys(actionCount).forEach(function(a){
-                                logStats[a] = {};
-                                logStats[a].total = actionCount[a].reduce(function(previous, current){ return previous+current }, 0);
-                                logStats[a].mean = Math.roundTo(logStats[a].total / logFiles.length, 2);
-                                logStats[a].std = Math.roundTo(getStdv(actionCount[a], logStats[a].mean), 2);
-
-                                logStatsArray.push({
-                                    action: a,
-                                    total: logStats[a].total,
-                                    mean: logStats[a].mean,
-                                    std: logStats[a].std
-                                });
-
-                                for(i=0; i<logFiles.length;i++) {
-                                    actionsByUser[i][a] = actionCount[a][i];
-                                }
-                            });
-//                            console.log('LOG STATS');
-//                            console.log(logStats);
-                            console.log('LOG STATS ARRAY');
-                            console.log(logStatsArray);
-                            console.log(JSON.stringify(logStatsArray));
-                            console.log('LOG STATS BY USER');
-                            console.log(actionsByUser);
-                            console.log(JSON.stringify(actionsByUser));
-                        }
-                    })
-                })
-
-            ).then(function(){
-//                console.log('Action Count');
-//                console.log(actionCount);
-            });
 
         },
+
+        getBeforeAndAfterFirstBookmarkStats: function(){
+
+            var stats = {
+                userWithBookmarks: 0,
+                meanWithoutOutliers: 0,
+                stdWithoutOutliers: 0,
+                avgKeywordsPerBM: 0,
+                stdKeywordsPerBM: 0,
+                avgUniqueKeywords: 0,
+                stdUniqueKeywords: 0,
+                updatesBeforeFirstBM: 0,
+                simpleTagDropsBeforeFirstBM: 0,
+                multiTagDropsBeforeFirstBM: 0,
+                weightChangesBeforeFirstBM: 0,
+                tagDeletionsBeforeFirstBM: 0,
+                simpleTagDropsAfterFirstBM: 0,
+                multiTagDropsAfterFirstBM: 0,
+                weightChangesAfterFirstBM: 0,
+                tagDeletionsAfterFirstBM: 0
+            };
+
+
+
+        },
+
+
+
         getActionCountByUser: function(){
 
 
@@ -161,17 +184,7 @@ var LogAnalyzer = (function(){
 
         }
     };
+
     module.exports = new LogAnalyzer();
+
 })();
-
-
-/*
-    function(){};
-
-LogAnalyzer.prototype.action = function(){
-
-    console.log('analyzer');
-};
-
-module.exports = new LogAnalyzer();
-*/
