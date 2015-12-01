@@ -1,14 +1,19 @@
 
 var glob = require('glob');
 var fs = require('fs');
-var _ = require('underscore');
+var fsSync = require('fs-sync');
+var _ = require('lodash');
 var logAnalyzer = require('./logAnalyzer.js');
 
 
 function getCsv(arr) {
-    var keys = _.keys(arr[0]),
-        csv = keys.join(',') + '\n';
-
+    if(!Array.isArray(arr)) {
+        var obj = arr;
+        arr = [];
+        Object.keys(obj).forEach(function(i){ arr.push(obj[i]) });
+    }
+    var keys = _.keys(arr[0]);
+    var csv = keys.join(',') + '\n';
     arr.forEach(function(a){
         var values = [];
         keys.forEach(function(key){ values.push(a[key]); });
@@ -27,14 +32,29 @@ function writeFile(fileName, data){
 
 
 function process() {
-//    var summary = logAnalyzer.getActionSummary();
-//    console.log('Writing summary');
-//    writeFile('actions summary.csv', getCsv(summary));
+    var actionSummary = logAnalyzer.getActionSummary();
+    console.log('Writing Action Summary');
+    writeFile('Actions Summary SHORT.csv', getCsv(actionSummary.short));
+    writeFile('Actions Summary LONG.csv', getCsv(actionSummary.long));
 
-    logAnalyzer.getBookmarkSummary();
+    var bookmarksSummary = logAnalyzer.getBookmarkSummary();
+    console.log('Writing Bookmarks Summary');
+    writeFile('Bookmarks Summary SHORT.csv', getCsv(bookmarksSummary.short));
+    writeFile('Bookmarks Summary LONG.csv', getCsv(bookmarksSummary.long));
+
+
+    //logAnalyzer.getBeforeAndAfterFirstBookmarkStats();
 
 }
 
+fsSync.mkdir('results', function(err){
+    if(err) console.log('Cannot create folder --> ', err);
+    else console.log('Folder created');
+});
+fsSync.mkdir('txt', function(err){
+    if(err) console.log('Cannot create folder --> ', err);
+    else console.log('Folder created');
+});
 
 
 var loadedFiles = 0;
@@ -50,8 +70,16 @@ glob('logs/*.json', function(err, files) {
                     console.log('Something wrong with the file --> ', err);
                 }
                 else {
-//                    console.log(logAnalyzer.load({ file: file, data: JSON.parse(data) }));
-                    logAnalyzer.load({ file: file, data: JSON.parse(data) });
+                    console.log('Loading file --> ' + file);
+                    var name = file.replace('logs/', '').replace('.json', '');
+                    logAnalyzer.load({ file: file, name: name, data: JSON.parse(data) }).fixLogs(name);
+
+                    var logList = logAnalyzer.getLogList(name).join('\n');
+                    console.log('Writing list of logs of interest --> ' + name);
+                    fs.writeFile('./txt/'+name+'.txt', logList, { flags: 'write' }, function(err){
+                        if(err) { console.log('Cannot write .txt file --> ', err); }
+                    });
+
                     loadedFiles++;
                     if(loadedFiles == files.length)
                         process();
