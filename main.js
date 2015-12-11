@@ -3,7 +3,7 @@ var glob = require('glob');
 var fs = require('fs');
 var fsSync = require('fs-sync');
 var _ = require('lodash');
-var logAnalyzer = require('./logAnalyzer.js');
+var logAnalyzer = require('./logAnalyzer');
 
 
 function getCsv(arr) {
@@ -32,18 +32,26 @@ function writeFile(fileName, data){
 
 
 function process() {
-    var actionSummary = logAnalyzer.getActionSummary();
-    console.log('Writing Action Summary');
-    writeFile('Actions Summary SHORT.csv', getCsv(actionSummary.short));
-    writeFile('Actions Summary LONG.csv', getCsv(actionSummary.long));
+//    var actionSummary = logAnalyzer.getActionSummary();
+//    console.log('Writing --> "Action Summary"');
+//    writeFile('Actions Summary SHORT.csv', getCsv(actionSummary.short));
+//    writeFile('Actions Summary LONG.csv', getCsv(actionSummary.long));
+//
+//    var bookmarksSummary = logAnalyzer.getBookmarkSummary();
+//    console.log('Writing --> "Bookmarks Summary"');
+//    writeFile('Bookmarks Summary SHORT.csv', getCsv(bookmarksSummary.short));
+//    writeFile('Bookmarks Summary LONG.csv', getCsv(bookmarksSummary.long));
+//
+//
+//    var beforeandAfterStats = logAnalyzer.getBeforeAndAfterFirstBookmarkStats();
+//    console.log('Writing --> "Before and After 1st Bookmark Summary"');
+//    writeFile('Before and After 1st Bookmark Summary.csv', getCsv(beforeandAfterStats));
 
-    var bookmarksSummary = logAnalyzer.getBookmarkSummary();
-    console.log('Writing Bookmarks Summary');
-    writeFile('Bookmarks Summary SHORT.csv', getCsv(bookmarksSummary.short));
-    writeFile('Bookmarks Summary LONG.csv', getCsv(bookmarksSummary.long));
+    var maxBookmarks = 3;
+    var aux =  logAnalyzer.getInterBookmarkStats(maxBookmarks);
+    console.log('Writing --> "Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ')"');
+    writeFile('Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ').csv', getCsv(aux));
 
-
-    //logAnalyzer.getBeforeAndAfterFirstBookmarkStats();
 
 }
 
@@ -75,7 +83,7 @@ glob('logs/*.json', function(err, files) {
                     logAnalyzer.load({ file: file, name: name, data: JSON.parse(data) }).fixLogs(name);
 
                     var logList = logAnalyzer.getLogList(name).join('\n');
-                    console.log('Writing list of logs of interest --> ' + name);
+                    console.log('Writing .txt with logs of interest --> ' + name);
                     fs.writeFile('./txt/'+name+'.txt', logList, { flags: 'write' }, function(err){
                         if(err) { console.log('Cannot write .txt file --> ', err); }
                     });
