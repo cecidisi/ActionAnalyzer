@@ -260,10 +260,9 @@ var LogAnalyzer = (function(){
                         if(log.action === _this.action.documentBookmarked && bmCount < maxBookmarks) {
                             var timeElapsed = parseInt(log.timestamp) - timeInit;
                             // insert row for action up to current bookmark
-                            var obj = { file: file, numBookmarks: bmCount, elapsedTime: timeElapsed, elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
+                            var obj = { file: file, numBookmarks: 'before bm '+(++bmCount), elapsedTime: parseInt(timeElapsed/1000), elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
                             interBookmarkStats.push(_.merge(obj, actionCount));
                             timeInit = parseInt(log.timestamp);
-                            bmCount++;
                             actionCount = _.merge({}, actionCounterInit);   // reset actionCount
                         }
                     }
@@ -271,10 +270,10 @@ var LogAnalyzer = (function(){
 
                 if(bmCount > 0) {
                     timeElapsed = parseInt(logFile.data[logFile.data.length - 1].timestamp) - timeInit;
-                    var obj = { file: file, numBookmarks: bmCount, elapsedTime: timeElapsed, elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
+                    var obj = { file: file, numBookmarks: 'after bm '+(bmCount), elapsedTime: parseInt(timeElapsed/1000), elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
                     interBookmarkStats.push(_.merge(obj, actionCount));      // insert last bookmark row
                     timeElapsed = parseInt(logFile.data[logFile.data.length - 1].timestamp) - parseInt(logFile.data[0].timestamp);
-                    var obj = { file: file, numBookmarks: bmCount, elapsedTime: timeElapsed, elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
+                    var obj = { file: file, numBookmarks: 'total', elapsedTime: parseInt(timeElapsed/1000), elapsedTimePretty: prettifyMilliseconds(timeElapsed) };
                     interBookmarkStats.push(_.merge(obj, actionTotalCount)); // insert total count
                 }
             });

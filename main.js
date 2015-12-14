@@ -32,27 +32,21 @@ function writeFile(fileName, data){
 
 
 function process() {
-//    var actionSummary = logAnalyzer.getActionSummary();
-//    console.log('Writing --> "Action Summary"');
-//    writeFile('Actions Summary SHORT.csv', getCsv(actionSummary.short));
-//    writeFile('Actions Summary LONG.csv', getCsv(actionSummary.long));
-//
-//    var bookmarksSummary = logAnalyzer.getBookmarkSummary();
-//    console.log('Writing --> "Bookmarks Summary"');
-//    writeFile('Bookmarks Summary SHORT.csv', getCsv(bookmarksSummary.short));
-//    writeFile('Bookmarks Summary LONG.csv', getCsv(bookmarksSummary.long));
-//
-//
-//    var beforeandAfterStats = logAnalyzer.getBeforeAndAfterFirstBookmarkStats();
-//    console.log('Writing --> "Before and After 1st Bookmark Summary"');
-//    writeFile('Before and After 1st Bookmark Summary.csv', getCsv(beforeandAfterStats));
+    var actionSummary = logAnalyzer.getActionSummary();
+    console.log('Writing --> "Action Summary"');
+    writeFile('Actions Summary SHORT.csv', getCsv(actionSummary.short));
+    writeFile('Actions Summary LONG.csv', getCsv(actionSummary.long));
 
-    var maxBookmarks = 3;
-    var aux =  logAnalyzer.getInterBookmarkStats(maxBookmarks);
-    console.log('Writing --> "Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ')"');
-    writeFile('Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ').csv', getCsv(aux));
+    var bookmarksSummary = logAnalyzer.getBookmarkSummary();
+    console.log('Writing --> "Bookmarks Summary"');
+    writeFile('Bookmarks Summary SHORT.csv', getCsv(bookmarksSummary.short));
+    writeFile('Bookmarks Summary LONG.csv', getCsv(bookmarksSummary.long));
 
-
+    for(var maxBookmarks=1; maxBookmarks <=3; ++maxBookmarks) {
+        var aux =  logAnalyzer.getInterBookmarkStats(maxBookmarks);
+        console.log('Writing --> "Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ')"');
+        writeFile('Inter-bookmark Stats (maxBookmarks = ' + maxBookmarks + ').csv', getCsv(aux));
+    }
 }
 
 fsSync.mkdir('results', function(err){
